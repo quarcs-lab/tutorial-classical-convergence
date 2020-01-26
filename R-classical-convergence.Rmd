@@ -1,0 +1,212 @@
+---
+title: "Classical Sigma and Beta Convergence Analysis in R:"
+subtitle: "Using the REAT 2.1 Package"
+author: "Carlos Mendez"
+output:
+  html_document:
+    code_download: true
+    df_print: paged
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 4
+    number_sections: true
+    code_folding: "show"
+    theme: "cosmo"
+    highlight: "monochrome"
+  pdf_document: default
+  word_document: default
+bibliography: biblio.bib
+---
+
+
+<style>
+h1.title {font-size: 18pt; color: DarkBlue;} 
+body, h1, h2, h3, h4 {font-family: "Palatino", serif;}
+body {font-size: 12pt;}
+/* Headers */
+h1,h2,h3,h4,h5,h6{font-size: 14pt; color: #00008B;}
+body {color: #333333;}
+a, a:hover {color: #8B3A62;}
+pre {font-size: 12px;}
+</style>
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ConvergenceClubs) # convergence clubs
+library(REAT)          # regional and economic analysis toolbox
+
+# To install and load version 2.1.1 of REAT packages
+#install.packages("devtools")
+#library(devtools)
+#remove.packages("REAT")
+#install_version("REAT", version = "2.1.1", repos = "http://cran.us.r-project.org")
+#library(REAT)
+
+# Change the presentation of decimal numbers to 4 and avoid scientific notation
+options(prompt="R> ", digits=4, scipen=999)
+```
+
+
+
+Suggested Citation: 
+
+> Mendez Carlos (2020). Classical Sigma and Beta Convergence Analysis in R: Using the REAT 2.1 Package. R Studio/RPubs. Available at <https://rpubs.com/quarcs-lab/classical-convergence-reat21>
+
+This work is licensed under the Creative Commons Attribution-Share Alike 4.0 International License. 
+![](License.png)
+
+
+# Preliminary Reading
+
+- [Vollrath (2018) New evidence on convergence. The Growth Blog.](https://growthecon.com/blog/Convergence/) 
+
+- [Johnson, P. and Papageorgiou, C., (2019). What Remains of Cross-Country Convergence?. Journal of Economic Literature (Forthcoming) ](https://mpra.ub.uni-muenchen.de/id/eprint/89355)
+
+# Load the Data
+
+Let us use a [dataset](https://rdrr.io/cran/ConvergenceClubs/man/GDP.html) containing the per-capita GDP of 152 Countries over 34 years (Phillips and Sul, 2009). The data is from the package [`ConvergenceClubs`](https://rdrr.io/cran/ConvergenceClubs/api/)
+
+```{r}
+data(GDP)
+GDP
+```
+
+
+# Sigma convergence for two periods (ANOVA): 1970 and 2003 
+
+For a description of the function and method see the [online documentation](https://rdrr.io/cran/REAT/man/sigmaconv.html)
+
+Let us measure the dispersion as $SD[Ln(Y)]$
+
+
+```{r}
+sigma_anova_sd_log <- sigmaconv(
+          GDP$Y1970,
+          1970,
+          GDP$Y2003,
+          2003,
+          sigma.measure = "sd",
+          sigma.log = TRUE, # Fist take log of Y, and then do the analysis
+          output.results = TRUE
+          )
+```
+
+# Sigma convergence for multiple periods (Trend regression) 
+ 
+For a description of the function and method see the [online documentation](https://rdrr.io/cran/REAT/man/sigmaconv.t.html)
+
+```{r}
+sigma_trend_sd_log <- sigmaconv.t(
+  GDP$Y1970,
+  1970,
+  GDP[3:35],
+  2003,
+  sigma.measure = "sd",
+  sigma.log = TRUE, # Fist take log of x, and then do the
+  output.results = TRUE
+  )
+```
+
+## Linear trend regression
+
+```{r}
+sigma_trend_sd_log[["sigma.trend"]] %>% 
+  ggplot(aes(x = years, y = sigma.years)) +
+  geom_line(size=1, linetype = "dashed") + 
+  geom_smooth(method = lm) + 
+  theme_minimal() +
+  labs(subtitle = "SD[Log(GDP per capita)]",
+       x = "",
+       y = "")
+```
+
+## Non-linear trend regression
+
+```{r}
+sigma_trend_sd_log[["sigma.trend"]] %>% 
+  ggplot(aes(x = years, y = sigma.years)) +
+  geom_line(size=1, linetype = "dashed") + 
+  geom_smooth() + 
+  theme_minimal() +
+  labs(subtitle = "SD[Log(GDP per capita)]",
+       x = "",
+       y = "")
+```
+
+
+An increasing dispersion implies a lack of sigma convergence
+
+
+# Beta convergence: 1970-2003 period
+
+
+```{r}
+betaconv_ols <- betaconv.ols (GDP$Y1970,
+              1970,
+              GDP$Y2003,
+              2003,
+              conditions = NULL, 
+              beta.plot = TRUE,
+              beta.plotLine = TRUE, 
+              beta.plotLineCol = "red", 
+              beta.plotX = "Ln (initial)", 
+              beta.plotY = "Growth", 
+              beta.plotTitle = "Beta convergence", 
+              beta.bgrid = TRUE, 
+              beta.bgridType = "solid",
+              output.results = TRUE)
+```
+
+
+## Linear beta-convergence regression
+
+```{r}
+betaconv_ols[["regdata"]] %>% 
+  ggplot(aes(x = ln_initial, y = growth)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  theme_minimal() +
+  labs(subtitle = "Growth of GDP per capita (1970-2003)",
+       x = "Log of GDP per capita in 1970",
+       y = "")
+```
+
+## Non-linear beta-convergence regression
+
+```{r}
+betaconv_ols[["regdata"]] %>% 
+  ggplot(aes(x = ln_initial, y = growth)) +
+  geom_point() +
+  geom_smooth() + 
+  theme_minimal() +
+  labs(subtitle = "Growth of GDP per capita (1970-2003)",
+       x = "Log of GDP per capita in 1970",
+       y = "")
+```
+
+
+The lack of statistical significance of the beta coefficient implies a lack of beta convergence
+
+
+# Research tasks
+
+- Evaluate sigma convergence using the coefficient of variation of GDP per capita. Are the results consistent with those using the standard deviation of the log of GDP per capita? Why is this the case?
+
+    > [Useful Reference](https://www.tandfonline.com/doi/abs/10.1080/13504851.2017.1391992): Ram, R., 2018. Comparison of cross-country measures of sigma-convergence in per-capita income, 1960–2010. Applied Economics Letters, 25(14), pp.1010-1014.
+
+- Evaluate how the beta convergence can change over time. In particular, evaluate and interpret the magnitude of the speed of convergence during after the 1990s.
+
+    > [Useful Reference](https://growthecon.com/blog/Convergence/): Patel, Sandefur and Subramanian (2018) Everything You Know about Cross-Country Convergence Is (Now) Wrong. Center for Global Development Blog.
+
+- Evaluate the role of population weights in the analysis convergence.
+
+    > [Useful Reference](http://eprints.lse.ac.uk/00000603/01/AppliedEconomicsLetters_10(6).pdf): Cole, M. A., & Neumayer, E. (2003). The pitfalls of convergence analysis: is the income gap really widening?. Applied Economics Letters, 10(6), 355-357.
+
+END
